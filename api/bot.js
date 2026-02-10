@@ -15,37 +15,37 @@ const recruitWizard = new Scenes.WizardScene(
         ctx.reply('Скільки тобі повних років?');
         return ctx.wizard.next();
     },
-    // 3. Місто проживання (НОВЕ)
+    // 3. Місто проживання
     (ctx) => {
         ctx.wizard.state.age = ctx.message.text;
         ctx.reply('З якого ти міста?');
         return ctx.wizard.next();
     },
-    // 4. Навчання/Робота (НОВЕ)
+    // 4. Минуле навчання або робота (ВИПРАВЛЕНО)
     (ctx) => {
         ctx.wizard.state.city = ctx.message.text;
-        ctx.reply('Де зараз навчаєшся або ким працюєш?');
+        ctx.reply('Де раніше навчався або працював?');
         return ctx.wizard.next();
     },
-    // 5. Досвід
+    // 5. Досвід в крипті
     (ctx) => {
-        ctx.wizard.state.occupation = ctx.message.text;
+        ctx.wizard.state.past_experience = ctx.message.text;
         ctx.reply('Розкажи про свій досвід в арбітражі або крипті:');
         return ctx.wizard.next();
     },
     // 6. Контакт
     (ctx) => {
-        ctx.wizard.state.experience = ctx.message.text;
+        ctx.wizard.state.crypto_exp = ctx.message.text;
         ctx.reply('Залиш свій контакт для зв\'язку (номер телефону або @username):');
         return ctx.wizard.next();
     },
-    // Фінал та звіт
+    // Фінал
     async (ctx) => {
         const userContactInput = ctx.message.text;
-        const { name, age, city, occupation, experience } = ctx.wizard.state;
+        const { name, age, city, past_experience, crypto_exp } = ctx.wizard.state;
         const adminId = process.env.ADMIN_ID;
 
-        // Визначаємо час подачі (Київ)
+        // Визначаємо час за Києвом
         const date = new Date();
         const kyivTime = date.toLocaleString("uk-UA", {timeZone: "Europe/Kiev"});
         const isPremium = ctx.from.is_premium ? '🌟 Так' : '❌ Ні';
@@ -56,13 +56,12 @@ const recruitWizard = new Scenes.WizardScene(
 👤 <b>ПІБ:</b> ${name}
 🎂 <b>Вік:</b> ${age}
 📍 <b>Місто:</b> ${city}
-🎓 <b>Робота/Навчання:</b> ${occupation}
-💼 <b>Досвід:</b> ${experience}
+🎓 <b>Минуле (навч/роб):</b> ${past_experience}
+💼 <b>Досвід у крипті:</b> ${crypto_exp}
 ━━━━━━━━━━━━━━━━━━
-📞 <b>ЗАЛИШЕНИЙ КОНТАКТ:</b> 
-<code>${userContactInput}</code>
+📞 <b>КОНТАКТ:</b> <code>${userContactInput}</code>
 ━━━━━━━━━━━━━━━━━━
-🛡 <b>ІНФО ПРО АККАУНТ:</b>
+🛡 <b>АККАУНТ:</b>
 ● <b>Premium:</b> ${isPremium}
 ● <b>Username:</b> @${ctx.from.username || 'приховано'}
 ● <b>ID:</b> <code>${ctx.from.id}</code>`;
@@ -70,7 +69,7 @@ const recruitWizard = new Scenes.WizardScene(
         try {
             let keyboard = [];
             if (ctx.from.username) {
-                keyboard.push([Markup.button.url('🚀 ПЕРЕЙТИ В ПРОФІЛЬ', `https://t.me/${ctx.from.username}`)]);
+                keyboard.push([Markup.button.url('🚀 ПЕРЕЙТИ ДО ЧАТУ', `https://t.me/${ctx.from.username}`)]);
             }
 
             await ctx.telegram.sendMessage(adminId, report, { 
@@ -78,9 +77,9 @@ const recruitWizard = new Scenes.WizardScene(
                 ...Markup.inlineKeyboard(keyboard)
             });
 
-            await ctx.reply('✅ Дякуємо! Твої дані успішно надіслані менеджеру. Очікуй на відповідь найближчим часом.');
+            await ctx.reply('✅ Дякуємо! Твої дані надіслані менеджеру. Чекай на відповідь!');
         } catch (err) {
-            console.error('Помилка надсилання:', err);
+            console.error(err);
         }
         return ctx.scene.leave();
     }
