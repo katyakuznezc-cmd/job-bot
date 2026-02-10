@@ -4,43 +4,45 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const recruitWizard = new Scenes.WizardScene(
     'RECRUIT_SCENE',
-    // 1. Имя
     (ctx) => {
         ctx.reply('👋 Привет! Давай заполним анкету на вакансию.\n\nКак тебя зовут? (ФИО)');
         return ctx.wizard.next();
     },
-    // 2. Возраст
     (ctx) => {
         ctx.wizard.state.name = ctx.message.text;
         ctx.reply('Сколько тебе полных лет?');
         return ctx.wizard.next();
     },
-    // 3. Опыт
     (ctx) => {
         ctx.wizard.state.age = ctx.message.text;
         ctx.reply('Какой у тебя опыт работы в арбитраже/крипте?');
         return ctx.wizard.next();
     },
-    // 4. Контакты (НОВОЕ)
     (ctx) => {
         ctx.wizard.state.experience = ctx.message.text;
         ctx.reply('Оставь свои контакты для связи (номер телефона или юзернейм в Telegram):');
         return ctx.wizard.next();
     },
-    // Финал
     async (ctx) => {
         const contacts = ctx.message.text;
         const { name, age, experience } = ctx.wizard.state;
-        const user = ctx.from.username ? `@${ctx.from.username}` : `ID: ${ctx.from.id}`;
+        const adminId = process.env.ADMIN_ID; // Берем ID из настроек Vercel
         
-        const report = `🔥 НОВАЯ АНКЕТА!\n\n👤 Имя: ${name}\n🎂 Возраст: ${age}\n💼 Опыт: ${experience}\n📞 Контакты: ${contacts}\n🔗 Профиль: ${user}`;
+        // ПРОВЕРКА: Если ты забыл добавить переменную в Vercel
+        if (!adminId) {
+            return ctx.reply('❌ Ошибка: В настройках Vercel не найден ADMIN_ID. Проверь Environment Variables!');
+        }
+
+        const report = `🔥 НОВАЯ АНКЕТА!\n\n👤 Имя: ${name}\n🎂 Возраст: ${age}\n💼 Опыт: ${experience}\n📞 Контакты: ${contacts}`;
 
         try {
-            await ctx.telegram.sendMessage(process.env.ADMIN_ID, report);
-            await ctx.reply('✅ Спасибо! Твои контакты переданы менеджеру. Ожидай звонка или сообщения в ближайшее время.');
+            // Пытаемся отправить отчет тебе
+            await ctx.telegram.sendMessage(adminId, report);
+            await ctx.reply('✅ Спасибо! Твои контакты переданы менеджеру. Ожидай звонка или сообщения.');
         } catch (err) {
-            console.error('Ошибка:', err);
-            await ctx.reply('❌ Ошибка отправки. Напиши менеджеру напрямую.');
+            // Если Telegram не разрешил отправить сообщение
+            console.error(err);
+            await ctx.reply(`❌ Ошибка Telegram: ${err.description || 'Бот не может написать админу. Ты нажал Start у бота?'}`);
         }
         return ctx.scene.leave();
     }
