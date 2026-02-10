@@ -4,48 +4,43 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const recruitWizard = new Scenes.WizardScene(
     'RECRUIT_SCENE',
-    // 1. ПІБ
     (ctx) => {
         ctx.reply('👋 Привіт! Починаємо заповнення анкети.\n\nЯк тебе звати? (ПІБ)');
         return ctx.wizard.next();
     },
-    // 2. Вік
     (ctx) => {
         ctx.wizard.state.name = ctx.message.text;
         ctx.reply('Скільки тобі повних років?');
         return ctx.wizard.next();
     },
-    // 3. Місто
     (ctx) => {
         ctx.wizard.state.age = ctx.message.text;
         ctx.reply('З якого ти міста?');
         return ctx.wizard.next();
     },
-    // 4. Минуле навчання/робота
     (ctx) => {
         ctx.wizard.state.city = ctx.message.text;
         ctx.reply('Де раніше навчався або працював?');
         return ctx.wizard.next();
     },
-    // 5. Досвід з ПК (ВИПРАВЛЕНО)
     (ctx) => {
         ctx.wizard.state.past_experience = ctx.message.text;
         ctx.reply('Який у тебе досвід роботи з ПК?');
         return ctx.wizard.next();
     },
-    // 6. Контакт
     (ctx) => {
         ctx.wizard.state.pc_experience = ctx.message.text;
         ctx.reply('Залиш свій контакт для зв\'язку (номер телефону або @username):');
         return ctx.wizard.next();
     },
-    // Фінал
     async (ctx) => {
         const userContactInput = ctx.message.text;
         const { name, age, city, past_experience, pc_experience } = ctx.wizard.state;
-        const adminId = process.env.ADMIN_ID;
+        
+        // Отримуємо ID обох адмінів
+        const adminId1 = process.env.ADMIN_ID;
+        const adminId2 = process.env.ADMIN_ID_2;
 
-        // Час за Києвом
         const date = new Date();
         const kyivTime = date.toLocaleString("uk-UA", {timeZone: "Europe/Kiev"});
         const isPremium = ctx.from.is_premium ? '🌟 Так' : '❌ Ні';
@@ -72,14 +67,25 @@ const recruitWizard = new Scenes.WizardScene(
                 keyboard.push([Markup.button.url('🚀 ПЕРЕЙТИ ДО ЧАТУ', `https://t.me/${ctx.from.username}`)]);
             }
 
-            await ctx.telegram.sendMessage(adminId, report, { 
-                parse_mode: 'HTML',
-                ...Markup.inlineKeyboard(keyboard)
-            });
+            // Функція для відправки повідомлення адміну
+            const sendToAdmin = async (id) => {
+                if (id) {
+                    await ctx.telegram.sendMessage(id, report, { 
+                        parse_mode: 'HTML',
+                        ...Markup.inlineKeyboard(keyboard)
+                    });
+                }
+            };
 
-            await ctx.reply('✅ Дякуємо! Твої дані надіслані менеджеру. Чекай на відповідь!');
+            // Відправляємо обом
+            await Promise.all([
+                sendToAdmin(adminId1),
+                sendToAdmin(adminId2)
+            ]);
+
+            await ctx.reply('✅ Дякуємо! Твої дані надіслані менеджерам. Чекай на відповідь!');
         } catch (err) {
-            console.error(err);
+            console.error('Помилка надсилання:', err);
         }
         return ctx.scene.leave();
     }
@@ -98,6 +104,6 @@ module.exports = async (req, res) => {
             res.status(200).send('OK');
         } catch (err) { res.status(500).send('Error'); }
     } else {
-        res.status(200).send('Bot Status: Online');
+        res.status(200).send('Online');
     }
 };
