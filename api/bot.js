@@ -4,7 +4,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const recruitWizard = new Scenes.WizardScene(
     'RECRUIT_SCENE',
-    // 1. Прізвище та Ім'я
+    // 1. ПІБ
     (ctx) => {
         ctx.reply('👋 Привіт! Починаємо заповнення анкети.\n\nЯк тебе звати? (ПІБ)');
         return ctx.wizard.next();
@@ -15,37 +15,37 @@ const recruitWizard = new Scenes.WizardScene(
         ctx.reply('Скільки тобі повних років?');
         return ctx.wizard.next();
     },
-    // 3. Місто проживання
+    // 3. Місто
     (ctx) => {
         ctx.wizard.state.age = ctx.message.text;
         ctx.reply('З якого ти міста?');
         return ctx.wizard.next();
     },
-    // 4. Минуле навчання або робота (ВИПРАВЛЕНО)
+    // 4. Минуле навчання/робота
     (ctx) => {
         ctx.wizard.state.city = ctx.message.text;
         ctx.reply('Де раніше навчався або працював?');
         return ctx.wizard.next();
     },
-    // 5. Досвід в крипті
+    // 5. Досвід з ПК (ВИПРАВЛЕНО)
     (ctx) => {
         ctx.wizard.state.past_experience = ctx.message.text;
-        ctx.reply('Розкажи про свій досвід в арбітражі або крипті:');
+        ctx.reply('Який у тебе досвід роботи з ПК?');
         return ctx.wizard.next();
     },
     // 6. Контакт
     (ctx) => {
-        ctx.wizard.state.crypto_exp = ctx.message.text;
+        ctx.wizard.state.pc_experience = ctx.message.text;
         ctx.reply('Залиш свій контакт для зв\'язку (номер телефону або @username):');
         return ctx.wizard.next();
     },
     // Фінал
     async (ctx) => {
         const userContactInput = ctx.message.text;
-        const { name, age, city, past_experience, crypto_exp } = ctx.wizard.state;
+        const { name, age, city, past_experience, pc_experience } = ctx.wizard.state;
         const adminId = process.env.ADMIN_ID;
 
-        // Визначаємо час за Києвом
+        // Час за Києвом
         const date = new Date();
         const kyivTime = date.toLocaleString("uk-UA", {timeZone: "Europe/Kiev"});
         const isPremium = ctx.from.is_premium ? '🌟 Так' : '❌ Ні';
@@ -57,7 +57,7 @@ const recruitWizard = new Scenes.WizardScene(
 🎂 <b>Вік:</b> ${age}
 📍 <b>Місто:</b> ${city}
 🎓 <b>Минуле (навч/роб):</b> ${past_experience}
-💼 <b>Досвід у крипті:</b> ${crypto_exp}
+💻 <b>Досвід з ПК:</b> ${pc_experience}
 ━━━━━━━━━━━━━━━━━━
 📞 <b>КОНТАКТ:</b> <code>${userContactInput}</code>
 ━━━━━━━━━━━━━━━━━━
