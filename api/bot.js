@@ -4,65 +4,59 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const recruitWizard = new Scenes.WizardScene(
     'RECRUIT_SCENE',
-    // 1. Приветствие
+    // 1. Имя
     (ctx) => {
-        ctx.reply('👋 Привет! Рады видеть тебя. Давай быстро заполним анкету.\n\nКак тебя зовут? (ФИО)');
+        ctx.reply('👋 Привет! Начинаем заполнение анкеты.\n\nКак тебя зовут? (ФИО)');
         return ctx.wizard.next();
     },
     // 2. Возраст
     (ctx) => {
         ctx.wizard.state.name = ctx.message.text;
-        ctx.reply('Сколько тебе лет?');
+        ctx.reply('Сколько тебе полных лет?');
         return ctx.wizard.next();
     },
-    // 3. Опыт (с кнопками)
+    // 3. Опыт (ТЕПЕРЬ ПРОСТО ТЕКСТ)
     (ctx) => {
         ctx.wizard.state.age = ctx.message.text;
-        ctx.reply('Твой опыт в арбитраже/крипте:', Markup.inlineKeyboard([
-            [Markup.button.callback('Новичок (обучаюсь)', 'exp_new')],
-            [Markup.button.callback('Опытный (есть профит)', 'exp_pro')]
-        ]));
+        ctx.reply('Расскажи о своем опыте в арбитраже или крипте:');
         return ctx.wizard.next();
     },
-    // 4. Контакты
+    // 4. Контакт
     (ctx) => {
-        // Логика на случай, если юзер просто проигнорировал кнопки и написал текст
-        if (!ctx.wizard.state.experience) {
-            ctx.wizard.state.experience = ctx.callbackQuery ? (ctx.callbackQuery.data === 'exp_new' ? 'Новичок' : 'Профи') : ctx.message.text;
-        }
-        ctx.reply('Оставь свой контакт для связи (телефон или юзернейм):');
+        ctx.wizard.state.experience = ctx.message.text;
+        ctx.reply('Оставь свой контакт для связи (номер телефона или @username):');
         return ctx.wizard.next();
     },
-    // Финал и отправка админу
+    // Финал и отчет
     async (ctx) => {
-        const contacts = ctx.message.text;
+        const userContactInput = ctx.message.text;
         const { name, age, experience } = ctx.wizard.state;
         const adminId = process.env.ADMIN_ID;
 
-        // --- ПРОВЕРКА НА ФЕЙКА ---
-        const isPremium = ctx.from.is_premium ? '🌟 Да (Premium)' : '❌ Нет';
-        const hasUsername = ctx.from.username ? `✅ @${ctx.from.username}` : '❌ Нет юзернейма';
-        const userLang = ctx.from.language_code ? ctx.from.language_code.toUpperCase() : 'Неизвестно';
+        // Определяем время подачи (МСК)
+        const date = new Date();
+        const moscowTime = date.toLocaleString("ru-RU", {timeZone: "Europe/Moscow"});
+        const isPremium = ctx.from.is_premium ? '🌟 Да' : '❌ Нет';
 
         const report = `
-🚀 <b>НОВАЯ ЗАЯВКА</b>
+📅 <b>НОВАЯ ЗАЯВКА [${moscowTime}]</b>
 ━━━━━━━━━━━━━━━━━━
 👤 <b>ФИО:</b> ${name}
 🎂 <b>Возраст:</b> ${age}
-📊 <b>Опыт:</b> ${experience}
-📞 <b>Контакт:</b> <code>${contacts}</code>
+💼 <b>Опыт:</b> ${experience}
 ━━━━━━━━━━━━━━━━━━
-🛡 <b>АНТИ-ФЕЙК ПРОВЕРКА:</b>
+📞 <b>ОСТАВЛЕННЫЙ КОНТАКТ:</b> 
+<code>${userContactInput}</code>
+━━━━━━━━━━━━━━━━━━
+🛡 <b>ИНФО ОБ АККАУНТЕ:</b>
 ● <b>Premium:</b> ${isPremium}
-● <b>Юзернейм:</b> ${hasUsername}
-● <b>Язык:</b> ${userLang}
+● <b>Username:</b> @${ctx.from.username || 'скрыт'}
 ● <b>ID:</b> <code>${ctx.from.id}</code>`;
 
         try {
-            // Кнопка быстрой связи
             let keyboard = [];
             if (ctx.from.username) {
-                keyboard.push([Markup.button.url('📩 НАПИСАТЬ КАНДИДАТУ', `https://t.me/${ctx.from.username}`)]);
+                keyboard.push([Markup.button.url('🚀 ПЕРЕЙТИ В ПРОФИЛЬ', `https://t.me/${ctx.from.username}`)]);
             }
 
             await ctx.telegram.sendMessage(adminId, report, { 
@@ -70,10 +64,9 @@ const recruitWizard = new Scenes.WizardScene(
                 ...Markup.inlineKeyboard(keyboard)
             });
 
-            await ctx.reply('✅ Спасибо! Твои данные успешно отправлены. Ожидай ответа менеджера.');
+            await ctx.reply('✅ Спасибо! Твои данные успешно отправлены менеджеру. Ожидай ответа в ближайшее время.');
         } catch (err) {
-            console.error('Ошибка отправки админу:', err);
-            await ctx.reply('❌ Произошла ошибка. Напиши нашему менеджеру напрямую.');
+            console.error('Ошибка отправки:', err);
         }
         return ctx.scene.leave();
     }
@@ -82,14 +75,6 @@ const recruitWizard = new Scenes.WizardScene(
 const stage = new Scenes.Stage([recruitWizard]);
 bot.use(session());
 bot.use(stage.middleware());
-
-// Обработка кликов по кнопкам опыта
-bot.action(/exp_(.*)/, (ctx) => {
-    ctx.wizard.state.experience = ctx.match[1] === 'new' ? 'Новичок' : 'Профи';
-    ctx.answerCbQuery();
-    ctx.reply(`Выбрано: ${ctx.wizard.state.experience}. Теперь введи данные для связи:`);
-    return ctx.wizard.next();
-});
 
 bot.start((ctx) => ctx.scene.enter('RECRUIT_SCENE'));
 
@@ -100,6 +85,6 @@ module.exports = async (req, res) => {
             res.status(200).send('OK');
         } catch (err) { res.status(500).send('Error'); }
     } else {
-        res.status(200).send('Bot is Online');
+        res.status(200).send('Bot Status: Online');
     }
 };
