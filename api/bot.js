@@ -4,59 +4,73 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const recruitWizard = new Scenes.WizardScene(
     'RECRUIT_SCENE',
-    // 1. Имя
+    // 1. Прізвище та Ім'я
     (ctx) => {
-        ctx.reply('👋 Привет! Начинаем заполнение анкеты.\n\nКак тебя зовут? (ФИО)');
+        ctx.reply('👋 Привіт! Починаємо заповнення анкети.\n\nЯк тебе звати? (ПІБ)');
         return ctx.wizard.next();
     },
-    // 2. Возраст
+    // 2. Вік
     (ctx) => {
         ctx.wizard.state.name = ctx.message.text;
-        ctx.reply('Сколько тебе полных лет?');
+        ctx.reply('Скільки тобі повних років?');
         return ctx.wizard.next();
     },
-    // 3. Опыт (ТЕПЕРЬ ПРОСТО ТЕКСТ)
+    // 3. Місто проживання (НОВЕ)
     (ctx) => {
         ctx.wizard.state.age = ctx.message.text;
-        ctx.reply('Расскажи о своем опыте в арбитраже или крипте:');
+        ctx.reply('З якого ти міста?');
         return ctx.wizard.next();
     },
-    // 4. Контакт
+    // 4. Навчання/Робота (НОВЕ)
+    (ctx) => {
+        ctx.wizard.state.city = ctx.message.text;
+        ctx.reply('Де зараз навчаєшся або ким працюєш?');
+        return ctx.wizard.next();
+    },
+    // 5. Досвід
+    (ctx) => {
+        ctx.wizard.state.occupation = ctx.message.text;
+        ctx.reply('Розкажи про свій досвід в арбітражі або крипті:');
+        return ctx.wizard.next();
+    },
+    // 6. Контакт
     (ctx) => {
         ctx.wizard.state.experience = ctx.message.text;
-        ctx.reply('Оставь свой контакт для связи (номер телефона или @username):');
+        ctx.reply('Залиш свій контакт для зв\'язку (номер телефону або @username):');
         return ctx.wizard.next();
     },
-    // Финал и отчет
+    // Фінал та звіт
     async (ctx) => {
         const userContactInput = ctx.message.text;
-        const { name, age, experience } = ctx.wizard.state;
+        const { name, age, city, occupation, experience } = ctx.wizard.state;
         const adminId = process.env.ADMIN_ID;
 
-        // Определяем время подачи (МСК)
+        // Визначаємо час подачі (Київ)
         const date = new Date();
-        const moscowTime = date.toLocaleString("ru-RU", {timeZone: "Europe/Moscow"});
-        const isPremium = ctx.from.is_premium ? '🌟 Да' : '❌ Нет';
+        const kyivTime = date.toLocaleString("uk-UA", {timeZone: "Europe/Kiev"});
+        const isPremium = ctx.from.is_premium ? '🌟 Так' : '❌ Ні';
 
         const report = `
-📅 <b>НОВАЯ ЗАЯВКА [${moscowTime}]</b>
+📅 <b>НОВА АНКЕТА [${kyivTime}]</b>
 ━━━━━━━━━━━━━━━━━━
-👤 <b>ФИО:</b> ${name}
-🎂 <b>Возраст:</b> ${age}
-💼 <b>Опыт:</b> ${experience}
+👤 <b>ПІБ:</b> ${name}
+🎂 <b>Вік:</b> ${age}
+📍 <b>Місто:</b> ${city}
+🎓 <b>Робота/Навчання:</b> ${occupation}
+💼 <b>Досвід:</b> ${experience}
 ━━━━━━━━━━━━━━━━━━
-📞 <b>ОСТАВЛЕННЫЙ КОНТАКТ:</b> 
+📞 <b>ЗАЛИШЕНИЙ КОНТАКТ:</b> 
 <code>${userContactInput}</code>
 ━━━━━━━━━━━━━━━━━━
-🛡 <b>ИНФО ОБ АККАУНТЕ:</b>
+🛡 <b>ІНФО ПРО АККАУНТ:</b>
 ● <b>Premium:</b> ${isPremium}
-● <b>Username:</b> @${ctx.from.username || 'скрыт'}
+● <b>Username:</b> @${ctx.from.username || 'приховано'}
 ● <b>ID:</b> <code>${ctx.from.id}</code>`;
 
         try {
             let keyboard = [];
             if (ctx.from.username) {
-                keyboard.push([Markup.button.url('🚀 ПЕРЕЙТИ В ПРОФИЛЬ', `https://t.me/${ctx.from.username}`)]);
+                keyboard.push([Markup.button.url('🚀 ПЕРЕЙТИ В ПРОФІЛЬ', `https://t.me/${ctx.from.username}`)]);
             }
 
             await ctx.telegram.sendMessage(adminId, report, { 
@@ -64,9 +78,9 @@ const recruitWizard = new Scenes.WizardScene(
                 ...Markup.inlineKeyboard(keyboard)
             });
 
-            await ctx.reply('✅ Спасибо! Твои данные успешно отправлены менеджеру. Ожидай ответа в ближайшее время.');
+            await ctx.reply('✅ Дякуємо! Твої дані успішно надіслані менеджеру. Очікуй на відповідь найближчим часом.');
         } catch (err) {
-            console.error('Ошибка отправки:', err);
+            console.error('Помилка надсилання:', err);
         }
         return ctx.scene.leave();
     }
